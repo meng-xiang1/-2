@@ -108,7 +108,7 @@ if st.button("开始分析并发送", type="primary") and 评论.strip():
 
                     st.session_state.发送状态 = "✅ 报告已生成,并发到 " + 收件人
                 except Exception as e:
-                    st.session_state.发送状态 = "⚠️ 报告已生成,但邮件没发出去"
+                    st.session_state.发送状态 = "⚠️ 邮件没发出去:" + str(e)
                     print("发信出错:", e)
 
 if st.session_state.get("报告"):
