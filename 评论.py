@@ -14,13 +14,16 @@ client = OpenAI(
 
 st.set_page_config(page_title="AI 评论分析", page_icon="📊")
 st.title("📊 AI 评论分析")
-st.caption("把评论粘进来,几分钟出一份分析报告")
+st.caption("把评论粘进来,自动生成报告并发到指定邮箱")
 
 with st.sidebar:
     st.header("📁 导入评论")
     上传 = st.file_uploader("上传评论(txt / csv)", type=["txt", "csv"])
     店铺名 = st.text_input("店铺或产品名(可选)")
-    收件人 = st.text_input("报告发到哪个邮箱?(可选)")
+    st.divider()
+    st.caption("报告会自动发到:")
+    收件人 = st.secrets.get("客户邮箱", "")
+    st.code(收件人 if 收件人 else "(还没配置)", language=None)
 
 if "评论" not in st.session_state:
     st.session_state.评论 = ""
@@ -65,41 +68,60 @@ if 上传 is not None:
 【评论内容】
 """ + 评论
 
-if st.button("开始分析", type="primary") and 评论.strip():
+if st.button("开始分析并发送", type="primary") and 评论.strip():
+
+    # ===== 第一步:分析 =====
+    报告 = None
     with st.spinner("正在分析评论,请稍等..."):
         try:
             回复 = client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[{"role": "user", "content": 提示}]
             )
-            st.session_state.报告 = 回复.choices[0].message.content
+            报告 = 回复.choices[0].message.content
+            st.session_state.报告 = 报告
+            st.session_state.发送状态 = ""
         except Exception as e:
-            st.warning("出了点小问题,请稍后再试")
-            print("出错了:", e)
+            st.error("分析失败,请稍后再试")
+            print("分析出错:", e)
 
+    # ===== 第二步:自动发送 =====
+    if 报告:
+        if not 收件人:
+            st.session_state.发送状态 = "⚠️ 报告已生成,但还没配置收件邮箱"
+        else:
+            with st.spinner("正在发送邮件..."):
+                try:
+                    正文 = markdown.markdown(报告)
+                    正文 = ('<div style="font-family:-apple-system,\'PingFang SC\','
+                            '\'Microsoft YaHei\',sans-serif;font-size:15px;'
+                            'line-height:1.8;color:#333333;max-width:640px;">'
+                            + 正文 + '</div>')
+                    msg = MIMEText(正文, "html", "utf-8")
+                    msg["Subject"] = Header(
+                        "评论分析报告 " + str(datetime.date.today()), "utf-8")
+                    msg["From"] = st.secrets["SMTP_USER"]
+                    msg["To"] = 收件人
+
+                    s = smtplib.SMTP_SSL("smtp.qq.com", 465)
+                    s.login(st.secrets["SMTP_USER"], st.secrets["SMTP_CODE"])
+                    s.sendmail(st.secrets["SMTP_USER"], [收件人], msg.as_string())
+                    s.close()
+
+                    st.session_state.发送状态 = "✅ 报告已生成,并发到 " + 收件人
+                except Exception as e:
+                    st.session_state.发送状态 = "⚠️ 报告已生成,但邮件没发出去"
+                    print("发信出错:", e)
+
+# ===== 显示结果 =====
 if st.session_state.get("报告"):
-    报告 = st.session_state.报告
     st.divider()
-    st.markdown(报告)
-    st.download_button("📥 下载报告", 报告, file_name="评论分析报告.md")
+    st.markdown(st.session_state.报告)
+    st.download_button("📥 下载报告", st.session_state.报告,
+                       file_name="评论分析报告.md")
 
-    st.divider()
-    st.subheader("📧 发到客户邮箱")
-    if st.button("发送报告") and 收件人:
-        try:
-            正文 = markdown.markdown(报告)
-            正文 = ('<div style="font-family:-apple-system,\'PingFang SC\',sans-serif;'
-                    'font-size:15px;line-height:1.8;color:#333;max-width:640px;">'
-                    + 正文 + '</div>')
-            msg = MIMEText(正文, "html", "utf-8")
-            msg["Subject"] = Header("评论分析报告 " + str(datetime.date.today()), "utf-8")
-            msg["From"] = st.secrets["SMTP_USER"]
-            msg["To"] = 收件人
-
-            s = smtplib.SMTP_SSL("smtp.qq.com", 465)
-            s.login(st.secrets["SMTP_USER"], st.secrets["SMTP_CODE"])
-            s.sendmail(st.secrets["SMTP_USER"], [收件人], msg.as_string())
-            s.close()
+if st.session_state.get("发送状态"):
+    st.info(st.session_state.发送状态)
             st.success("已发送到 " + 收件人)
         except Exception as e:
             st.error("发送失败,请检查邮箱配置")
