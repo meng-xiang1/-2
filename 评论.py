@@ -70,7 +70,6 @@ if 上传 is not None:
 
 if st.button("开始分析并发送", type="primary") and 评论.strip():
 
-    # ===== 第一步:分析 =====
     报告 = None
     with st.spinner("正在分析评论,请稍等..."):
         try:
@@ -85,7 +84,6 @@ if st.button("开始分析并发送", type="primary") and 评论.strip():
             st.error("分析失败,请稍后再试")
             print("分析出错:", e)
 
-    # ===== 第二步:自动发送 =====
     if 报告:
         if not 收件人:
             st.session_state.发送状态 = "⚠️ 报告已生成,但还没配置收件邮箱"
@@ -113,7 +111,6 @@ if st.button("开始分析并发送", type="primary") and 评论.strip():
                     st.session_state.发送状态 = "⚠️ 报告已生成,但邮件没发出去"
                     print("发信出错:", e)
 
-# ===== 显示结果 =====
 if st.session_state.get("报告"):
     st.divider()
     st.markdown(st.session_state.报告)
@@ -122,7 +119,3 @@ if st.session_state.get("报告"):
 
 if st.session_state.get("发送状态"):
     st.info(st.session_state.发送状态)
-            st.success("已发送到 " + 收件人)
-        except Exception as e:
-            st.error("发送失败,请检查邮箱配置")
-            print("发信出错:", e)
