@@ -22,7 +22,7 @@ with st.sidebar:
     店铺名 = st.text_input("店铺或产品名(可选)")
     st.divider()
     st.caption("报告会自动发到:")
-    收件人 = st.secrets.get("客户邮箱", "")
+    收件人 = st.secrets.get("CLIENT_EMAIL", "")
     st.code(收件人 if 收件人 else "(还没配置)", language=None)
 
 if "评论" not in st.session_state:
