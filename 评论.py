@@ -20,10 +20,26 @@ with st.sidebar:
     st.header("📁 导入评论")
     上传 = st.file_uploader("上传评论(txt / csv)", type=["txt", "csv"])
     店铺名 = st.text_input("店铺或产品名(可选)")
+
     st.divider()
-    st.caption("报告会自动发到:")
-    收件人 = st.secrets.get("CLIENT_EMAIL", "")
-    st.code(收件人 if 收件人 else "(还没配置)", language=None)
+    st.subheader("📧 报告发到哪个邮箱")
+
+    # 从网址里读上次填的邮箱
+    默认邮箱 = st.query_params.get("email", "")
+
+    def 记住邮箱():
+        值 = (st.session_state.get("邮箱框") or "").strip()
+        if 值:
+            st.query_params["email"] = 值      # 写进网址
+        elif "email" in st.query_params:
+            del st.query_params["email"]
+
+    st.text_input("填一次,以后自动记住", value=默认邮箱,
+                  key="邮箱框", on_change=记住邮箱)
+
+    收件人 = (st.session_state.get("邮箱框") or 默认邮箱 or "").strip()
+    if 收件人:
+        st.caption("✅ 报告将发送到:" + 收件人)
 
 if "评论" not in st.session_state:
     st.session_state.评论 = ""
